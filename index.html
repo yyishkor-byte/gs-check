@@ -149,7 +149,6 @@
             margin-top: 10px; 
         }
 
-        /* 여러 장 사진 미리보기 스타일 확장 */
         .image-preview-container {
             margin-top: 10px;
             display: none;
@@ -403,7 +402,6 @@
             <button class="btn" style="background:#475569; margin-top:5px;" onclick="triggerGathering()">안전관리 취합 서식 열기</button>
         </div>
 
-        <!-- 멀티 사진 업로드 및 미리보기 통합 영역 -->
         <div id="gathering-section" class="card" style="display: none;">
             <div class="section-title" style="color:var(--gs-green);">안전점검 및 상태 취합</div>
             <div class="form-blank">
@@ -459,7 +457,7 @@
     <div class="content page-section" id="master-page" style="display: none;">
         <div class="card" style="background: #e6f0fa; border: 1px solid #b5c7d9;">
             <div style="font-size: 13px; font-weight: bold; color: var(--gs-blue);">👑 최고관리자 제어 센터</div>
-            <p style="font-size: 11px; color: #475569; margin: 4px 0 0 0;">마스터 전용: 승인 대기 중인 항목만 정렬되어 표시되며, 처리 완료(승인/수정요청) 시 목록에서 자동으로 제거됩니다.</p>
+            <p style="font-size: 11px; color: #475569; margin: 4px 0 0 0;">마스터 전용: 신규 회원가입 승인 관리 및 안건 수신함을 통제합니다.</p>
         </div>
         
         <div id="master-review-container">
@@ -490,7 +488,22 @@
 
 <script>
     let currentUserRole = ""; 
-    let currentUploadedImages = []; // 이미지 배열 저장 변수
+    let currentUploadedImages = []; 
+
+    const defaultAccounts = [
+        { id: "thes", pw: "0250", role: "THES", name: "THES (협력업체)" },
+        { id: "gsthe", pw: "5525", role: "GSTHE", name: "GS리테일 최고관리자" }
+    ];
+
+    function getUserAccounts() {
+        const saved = localStorage.getItem('gs_user_accounts');
+        return saved ? JSON.parse(saved) : defaultAccounts;
+    }
+
+    function getSignupRequests() {
+        const saved = localStorage.getItem('gs_signup_requests');
+        return saved ? JSON.parse(saved) : [];
+    }
 
     let liveReportRecords = [
         { id: 1, storeName: "광나루점", date: "2026-06-16", result: "양호", status: "승인대기", remark: "현장 점검 완료", imgs: [], feedback: "", inspector: "THES (협력업체)" }
@@ -588,20 +601,22 @@
         const inspectorInput = document.getElementById('inspector-name');
         const masterTabBtn = document.getElementById('tab-btn-master');
 
-        if (rawId === "thes" && pw === "0250") {
-            alert("협력업체(THES) 계정으로 로그인되었습니다.");
-            currentUserRole = "THES";
-            inspectorInput.value = "THES (협력업체)";
-            masterTabBtn.style.display = "none";
-            enterApp();
-        } else if (rawId === "gsthe" && pw === "5525") {
-            alert("GS리테일 최고관리자(마스터) 계정으로 로그인되었습니다.");
-            currentUserRole = "GSTHE";
-            inspectorInput.value = "GS리테일 최고관리자";
-            masterTabBtn.style.display = "flex";
+        const users = getUserAccounts();
+        const foundUser = users.find(u => u.id.toLowerCase() === rawId && u.pw === pw);
+
+        if (foundUser) {
+            alert(`${foundUser.name} 계정으로 로그인되었습니다.`);
+            currentUserRole = foundUser.role;
+            inspectorInput.value = foundUser.name;
+            
+            if (currentUserRole === "GSTHE") {
+                masterTabBtn.style.display = "flex";
+            } else {
+                masterTabBtn.style.display = "none";
+            }
             enterApp();
         } else {
-            alert("아이디 또는 비밀번호가 올바르지 않습니다.");
+            alert("아이디 또는 비밀번호가 올바르지 않거나 아직 관리자 승인 대기 중입니다.");
         }
     }
 
@@ -704,7 +719,6 @@
         document.getElementById('gathering-section').style.display = 'block';
     }
 
-    /* 다중 이미지 미리보기 처리 함수 */
     function previewImages(input) {
         const previewBox = document.getElementById('preview-box');
         const previewGrid = document.getElementById('preview-grid');
@@ -778,6 +792,7 @@
         btn.innerText = "👑 마스터 통제실로 검토 승인 요청";
     }
 
+    /* 💡 기능 고도화: 실시간 보드 썸네일 클릭 모달 연결 */
     function renderLiveTable() {
         const tbody = document.getElementById('live-status-table-body');
         tbody.innerHTML = "";
@@ -792,7 +807,7 @@
             if (rec.imgs && rec.imgs.length > 0) {
                 imgHtml = `<img src="${rec.imgs[0]}" class="board-img-thumb" onclick="openImageModal('${rec.imgs[0]}')" alt="사진">`;
                 if(rec.imgs.length > 1) {
-                    imgHtml += `<div style="font-size:9px; color:#0056A6; font-weight:bold;">외 ${rec.imgs.length - 1}장</div>`;
+                    imgHtml += `<div style="font-size:9px; color:#0056A6; font-weight:bold; cursor:pointer;" onclick="openImageModal('${rec.imgs[0]}')">외 ${rec.imgs.length - 1}장</div>`;
                 }
             } else {
                 imgHtml = `<span style="color:#94a3b8; font-size:10px;">사진없음</span>`;
@@ -818,6 +833,7 @@
         document.getElementById('img-modal').style.display = 'none';
     }
 
+    /* 💡 기능 고도화: 통합 실시간 검색 필터링 연결 */
     function renderMasterReviewList() {
         const container = document.getElementById('master-review-container');
         container.innerHTML = "";
@@ -825,20 +841,42 @@
         const searchInput = document.createElement('input');
         searchInput.type = "text";
         searchInput.id = "master-search-box";
-        searchInput.placeholder = "승인대기 점포명 검색...";
-        searchInput.onkeyup = function() {
-            const val = this.value.toLowerCase();
-            document.querySelectorAll('.master-item-card').forEach(card => {
-                card.style.display = card.innerText.toLowerCase().includes(val) ? 'block' : 'none';
-            });
-        };
+        searchInput.placeholder = "점포명 또는 신청자 검색...";
+        searchInput.onkeyup = filterMasterItems;
         searchInput.style.marginBottom = "10px";
         container.appendChild(searchInput);
+
+        const signupRequests = getSignupRequests();
+        let signupSectionHtml = `
+            <div class="card master-signup-card-group" style="border:1px solid #cbd5e1; background:#fff; margin-bottom:16px;">
+                <div class="section-title" style="color:var(--gs-green); font-weight:bold;">👤 신규 회원가입 승인 대기 (${signupRequests.length}건)</div>
+        `;
+
+        if (signupRequests.length === 0) {
+            signupSectionHtml += `<div style="text-align:center; padding:12px; color:#64748b; font-size:12px;">대기 중인 회원가입 요청이 없습니다.</div>`;
+        } else {
+            signupRequests.forEach((req) => {
+                signupSectionHtml += `
+                    <div class="signup-item-row" style="padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center; font-size:12px;">
+                        <div>
+                            <b>${req.name}</b> (${req.id})<br>
+                            <span style="color:#64748b; font-size:11px;">📧 ${req.email || '이메일 없음'} | 📅 ${req.requestDate}</span>
+                        </div>
+                        <div style="display:flex; gap:4px;">
+                            <button onclick="approveUser('${req.id}')" style="padding:6px 10px; background:var(--gs-green); color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:11px;">승인</button>
+                            <button onclick="rejectUser('${req.id}')" style="padding:6px 10px; background:var(--danger-color); color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer; font-size:11px;">거절</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        signupSectionHtml += `</div>`;
+        container.innerHTML += signupSectionHtml;
 
         const pendingRecords = liveReportRecords.filter(rec => rec.status === "승인대기");
 
         if(pendingRecords.length === 0) {
-            container.innerHTML += `<div style="text-align:center; padding:30px; color:#64748b; font-size:13px; font-weight:bold;">🎉 현재 검토 대기 중인 안건이 없습니다.</div>`;
+            container.innerHTML += `<div style="text-align:center; padding:20px; color:#64748b; font-size:13px; font-weight:bold;">🎉 현재 검토 대기 중인 안건이 없습니다.</div>`;
             return;
         }
 
@@ -880,6 +918,52 @@
             `;
             container.appendChild(card);
         });
+    }
+
+    function filterMasterItems() {
+        const val = document.getElementById('master-search-box').value.toLowerCase();
+        
+        document.querySelectorAll('.master-item-card').forEach(card => {
+            card.style.display = card.innerText.toLowerCase().includes(val) ? 'block' : 'none';
+        });
+
+        document.querySelectorAll('.signup-item-row').forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(val) ? 'flex' : 'none';
+        });
+    }
+
+    function approveUser(reqId) {
+        let requests = getSignupRequests();
+        let users = getUserAccounts();
+
+        const targetIdx = requests.findIndex(r => r.id === reqId);
+        if (targetIdx > -1) {
+            const targetUser = requests[targetIdx];
+            users.push({
+                id: targetUser.id,
+                pw: targetUser.pw,
+                role: targetUser.role,
+                name: targetUser.name
+            });
+            requests.splice(targetIdx, 1);
+
+            localStorage.setItem('gs_user_accounts', JSON.stringify(users));
+            localStorage.setItem('gs_signup_requests', JSON.stringify(requests));
+
+            alert(`[${targetUser.id}] 회원가입 신청이 승인되었습니다.\n이제 해당 아이디로 로그인이 가능합니다.`);
+            renderMasterReviewList();
+        }
+    }
+
+    function rejectUser(reqId) {
+        let requests = getSignupRequests();
+        const targetIdx = requests.findIndex(r => r.id === reqId);
+        if (targetIdx > -1 && confirm("해당 회원가입 요청을 거절(삭제)하시겠습니까?")) {
+            requests.splice(targetIdx, 1);
+            localStorage.setItem('gs_signup_requests', JSON.stringify(requests));
+            alert("회원가입 요청이 거절되었습니다.");
+            renderMasterReviewList();
+        }
     }
 
     function processMasterStatus(id, newStatus) {
@@ -971,6 +1055,7 @@
         container.innerHTML = html;
     }
 
+    /* 💡 기능 고도화: 점포 내역 수정 시 실시간 집계 보정 */
     function updateStoreInfoDirect(id) {
         const newName = document.getElementById(`name-input-${id}`).value.trim();
         const newLed = parseInt(document.getElementById(`led-input-${id}`).value) || 0;
@@ -1035,22 +1120,46 @@
     }
 
     function showSignup() { document.getElementById('signup-form').style.display = 'block'; }
-    function hideSignup() { document.getElementById('signup-form').style.display = 'none'; }
     
-    async function processSignup() {
+    /* 💡 기능 고도화: 회원가입 폼 취소 시 입력 필드 깨끗이 초기화 */
+    function hideSignup() { 
+        document.getElementById('s-name').value = "";
+        document.getElementById('s-email').value = "";
+        document.getElementById('s-id').value = "";
+        document.getElementById('s-pw').value = "";
+        document.getElementById('signup-form').style.display = 'none'; 
+    }
+    
+    function processSignup() {
         const name = document.getElementById('s-name').value.trim();
         const email = document.getElementById('s-email').value.trim();
-        const id = document.getElementById('s-id').value.trim();
+        const id = document.getElementById('s-id').value.trim().toLowerCase();
         const pw = document.getElementById('s-pw').value.trim();
 
-        if(!name || !id || !pw) { alert("모든 항목을 입력하세요."); return; }
+        if(!name || !id || !pw) { alert("모든 필수 항목(이름, 아이디, 비밀번호)을 입력해 주세요."); return; }
 
-        try {
-            alert(`${name}님, 회원가입 승인 요청이 제출되었습니다.\n최고관리자 승인 후 로그인이 가능합니다.`);
-            hideSignup();
-        } catch(e) {
-            alert("승인 요청 전송에 실패했습니다.");
+        const users = getUserAccounts();
+        const requests = getSignupRequests();
+
+        if (users.some(u => u.id.toLowerCase() === id) || requests.some(r => r.id.toLowerCase() === id)) {
+            alert("이미 존재하거나 승인 대기 중인 아이디입니다.");
+            return;
         }
+
+        const newReq = {
+            id: id,
+            pw: pw,
+            name: name + " (점검원)",
+            email: email,
+            role: "THES",
+            requestDate: new Date().toLocaleDateString()
+        };
+
+        requests.push(newReq);
+        localStorage.setItem('gs_signup_requests', JSON.stringify(requests));
+
+        alert(`${name}님, 회원가입 승인 요청이 제출되었습니다.\n마스터 통제실 승인 후 로그인이 가능합니다.`);
+        hideSignup();
     }
 </script>
 </body>
