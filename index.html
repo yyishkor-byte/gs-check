@@ -1000,12 +1000,19 @@
 
         const payload = { name, email, id, pw, requestDate: new Date().toISOString() };
 
-        try {
-            alert(`${name}님, 회원가입 승인 요청이 제출되었습니다.\n최고관리자 승인 후 로그인이 가능합니다.`);
-            hideSignup();
-        } catch(e) {
-            alert("승인 요청 전송에 실패했습니다.");
-        }
+      try {
+      await fetch("https://script.google.com/macros/s/AKfycby6u68GAqrC13Hwb_0bSyw8eolU5Cp5_V0_7XWPaH1K-PyV1t12aOHI2kP6u7oc4mTG/exec", {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      
+      alert(`${name}님, 회원가입 승인 요청이 제출되었습니다.\n최고관리자 승인 후 로그인이 가능합니다.`);
+      hideSignup();
+    } catch(e) {
+      alert("승인 요청 전송에 실패했습니다.");
+    }
     }
 </script>
 </body>
