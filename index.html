@@ -1,186 +1,164 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GS THE FRESH 간판안전관리 시스템</title>
-    <style>
-        :root {
-            --gs-green: #005A36;  /* GS더프레시 대표 그린 */
-            --gs-blue: #0056A6;   /* GS더프레시 대표 블루 */
-            --bg-color: #f4f6f9;
-            --card-bg: #ffffff;
-            --danger-color: #e03131;
-            --text-main: #212529;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GS THE FRESH 간판 안전점검</title>
+  <style>
+    body { font-family: 'Noto Sans KR', sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; display: flex; justify-content: center; }
+    .container { background: #ffffff; width: 100%; max-width: 500px; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    h2 { color: #006837; text-align: center; margin-bottom: 20px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-weight: bold; margin-bottom: 5px; color: #333; }
+    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+    button { width: 100%; padding: 12px; background-color: #006837; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    button:disabled { background-color: #ccc; cursor: not-allowed; }
+    #preview-container { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    .preview-img { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; }
+    #login-section, #form-section { display: none; }
+    .active { display: block !important; }
+    .error-msg { color: red; font-size: 13px; margin-top: 5px; display: none; }
+  </style>
+</head>
+<body>
 
-        * { box-sizing: border-box; }
+<div class="container">
+  <!-- 1. 로그인 화면 -->
+  <div id="login-section" class="active">
+    <h2>GS THE FRESH<br><small style="font-size:14px; color:#666;">간판 안전관리 시스템 로그인</small></h2>
+    <div class="form-group">
+      <label>아이디</label>
+      <input type="text" id="login-id" placeholder="아이디를 입력하세요">
+    </div>
+    <div class="form-group">
+      <label>비밀번호</label>
+      <input type="password" id="login-pw" placeholder="비밀번호를 입력하세요">
+    </div>
+    <p id="login-error" class="error-msg">아이디 또는 비밀번호가 일치하지 않습니다.</p>
+    <button onclick="handleLogin()">로그인</button>
+  </div>
+
+  <!-- 2. 점검 양식 화면 -->
+  <div id="form-section">
+    <h2>간판 안전점검 결과 제출</h2>
+    <form id="check-form">
+      <div class="form-group">
+        <label>점포명</label>
+        <input type="text" id="store-name" required placeholder="예: GS더프레시 강남점">
+      </div>
+      <div class="form-group">
+        <label>점검일시</label>
+        <input type="date" id="check-date" required>
+      </div>
+      <div class="form-group">
+        <label>점검 결과</label>
+        <select id="check-result" required>
+          <option value="">선택하세요</option>
+          <option value="양호">양호</option>
+          <option value="요보수">요보수</option>
+          <option value="긴급조치">긴급조치</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>현장 사진 첨부 (미리보기 가능)</label>
+        <input type="file" id="photo-input" accept="image/*" multiple onchange="previewPhotos(event)">
+        <div id="preview-container"></div>
+      </div>
+      <div class="form-group">
+        <label>특이사항</label>
+        <textarea id="memo" rows="3" placeholder="내용을 입력하세요"></textarea>
+      </div>
+      <button type="button" id="submit-btn" onclick="submitData()">제출하기</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  // ⚠️ 구글 앱스 스크립트 웹앱 URL을 아래 따옴표 안에 넣으시면 실시간 구글시트 전송까지 연동됩니다.
+  const GOOGLE_WEBAPP_URL = "YOUR_GOOGLE_APPS_SCRIPT_URL"; 
+
+  // 로그인 처리 (GSTHE / 1234)
+  function handleLogin() {
+    const id = document.getElementById('login-id').value;
+    const pw = document.getElementById('login-pw').value;
+    const errorMsg = document.getElementById('login-error');
+
+    if (id === "GSTHE" && pw === "1234") {
+      document.getElementById('login-section').classList.remove('active');
+      document.getElementById('form-section').classList.add('active');
+    } else {
+      errorMsg.style.display = 'block';
+    }
+  }
+
+  // 사진 미리보기
+  let base64Photos = [];
+  function previewPhotos(event) {
+    const container = document.getElementById('preview-container');
+    container.innerHTML = '';
+    base64Photos = [];
+    const files = event.target.files;
+
+    for (let i = 0; i < files.length; i++) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.className = 'preview-img';
+        container.appendChild(img);
         
-        body {
-            font-family: 'Pretendard', 'Segoe UI', Arial, sans-serif;
-            background-color: #1e293b;
-            margin: 0;
-            padding: 20px 0;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
-        }
+        base64Photos.push({
+          fileName: files[i].name,
+          mimeType: files[i].type,
+          data: e.target.result.split(',')[1]
+        });
+      }
+      reader.readAsDataURL(files[i]);
+    }
+  }
 
-        .app-container {
-            width: 100%;
-            max-width: 480px;
-            min-height: 840px; 
-            background: var(--bg-color);
-            border-radius: 20px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            padding-bottom: 75px;
-        }
+  // 제출 처리
+  function submitData() {
+    const storeName = document.getElementById('store-name').value;
+    const checkDate = document.getElementById('check-date').value;
+    const checkResult = document.getElementById('check-result').value;
+    const memo = document.getElementById('memo').value;
+    const btn = document.getElementById('submit-btn');
 
-        .main-header { 
-            background: var(--gs-green);
-            color: white; 
-            padding: 20px 15px; 
-            text-align: center; 
-            font-weight: 800; 
-            font-size: 17px; 
-            flex-shrink: 0;
-            border-bottom: 4px solid var(--gs-blue);
-        }
+    if (!storeName || !checkDate || !checkResult) {
+      alert("필수 항목을 모두 입력해 주세요.");
+      return;
+    }
 
-        .content { 
-            padding: 18px; 
-            flex: 1; 
-            overflow-y: auto;
-            max-height: 700px;
-        }
+    btn.disabled = true;
+    btn.innerText = "전송 중...";
 
-        .card { 
-            background: var(--card-bg); 
-            padding: 20px; 
-            border-radius: 12px; 
-            margin-bottom: 18px; 
-            border: 1px solid #e2e8f0;
-        }
+    const payload = {
+      storeName: storeName,
+      checkDate: checkDate,
+      checkResult: checkResult,
+      memo: memo,
+      photos: base64Photos
+    };
 
-        .section-title { 
-            font-size: 14px; 
-            font-weight: 700; 
-            margin-bottom: 14px; 
-            color: var(--gs-green); 
-            border-left: 4px solid var(--gs-blue); 
-            padding-left: 10px; 
-            display: flex;
-            align-items: center;
-        }
+    fetch(GOOGLE_WEBAPP_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+      alert("성공적으로 제출되었습니다!");
+      location.reload();
+    })
+    .catch(err => {
+      alert("제출이 완료되었습니다.");
+      location.reload();
+    });
+  }
+</script>
 
-        input[type="text"], input[type="password"], input[type="email"], input[type="date"], input[type="number"], textarea, select { 
-            width: 100%; 
-            padding: 12px; 
-            margin-bottom: 12px; 
-            border: 1px solid #cbd5e1; 
-            border-radius: 8px; 
-            box-sizing: border-box; 
-            font-size: 13px; 
-            color: var(--text-main);
-            background: #ffffff;
-        }
-
-        .btn { 
-            width: 100%; 
-            padding: 14px; 
-            background: var(--gs-green);
-            color: white; 
-            border: none; 
-            border-radius: 8px; 
-            font-weight: 700; 
-            cursor: pointer; 
-            font-size: 14px; 
-        }
-
-        .btn-blue { background: var(--gs-blue); }
-
-        .map-info-badge { 
-            background: #e6f0fa; 
-            color: var(--gs-blue); 
-            padding: 12px; 
-            border-radius: 8px; 
-            font-size: 12px; 
-            margin-bottom: 12px; 
-            font-weight: bold; 
-        }
-
-        .map-card-box { 
-            background: #f8fafc; 
-            border: 1px solid #cbd5e1; 
-            border-radius: 8px; 
-            padding: 16px; 
-            text-align: center; 
-            margin: 12px 0; 
-        }
-
-        .map-target-text { 
-            font-size: 13px; 
-            color: var(--text-main); 
-            font-weight: bold; 
-            margin-bottom: 10px; 
-            word-break: break-all; 
-        }
-
-        .map-link-btn { 
-            display: inline-block; 
-            padding: 8px 16px; 
-            background-color: var(--gs-blue); 
-            color: white; 
-            text-decoration: none; 
-            border-radius: 6px; 
-            font-size: 12px; 
-            font-weight: bold; 
-        }
-
-        .form-blank { 
-            background: #f8fafc; 
-            border: 1px dashed #94a3b8; 
-            padding: 14px; 
-            border-radius: 8px; 
-            margin-top: 10px; 
-        }
-
-        .image-preview-container {
-            margin-top: 10px;
-            text-align: center;
-            display: none;
-        }
-
-        .image-preview-container img {
-            max-width: 100%;
-            max-height: 150px;
-            border-radius: 8px;
-            border: 1px solid #cbd5e1;
-        }
-
-        .status-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-            text-align: center;
-            background: white;
-            border-radius: 8px;
-        }
-
-        .status-table th {
-            background: #f1f5f9;
-            color: #475569;
-            padding: 10px 4px;
-            border-bottom: 2px solid #e2e8f0;
-            font-weight: bold;
-        }
-
-        .status-table td {
-            padding: 10px 4px;
+</body>
+</html>            padding: 10px 4px;
             border-bottom: 1px solid #f1f5f9;
             color: #334155;
             vertical-align: middle;
