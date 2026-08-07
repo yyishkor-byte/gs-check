@@ -991,19 +991,61 @@
     function hideSignup() { document.getElementById('signup-form').style.display = 'none'; }
     
     async function processSignup() {
-        const name = document.getElementById('s-name').value.trim();
-        const email = document.getElementById('s-email').value.trim();
-        const id = document.getElementById('s-id').value.trim();
-        const pw = document.getElementById('s-pw').value.trim();
+  const name = document.getElementById('s-name').value.trim();
+  const email = document.getElementById('s-email').value.trim();
+  const id = document.getElementById('s-id').value.trim();
+  const pw = document.getElementById('s-pw').value.trim();
+  const fileInput = document.getElementById('s-file'); // 파일 입력 태그 ID (추가됨)
 
-        if(!name || !id || !pw) { alert("모든 항목을 입력하세요."); return; }
+  if (!name || !id || !pw) { 
+    alert("필수 항목을 모두 입력하세요."); 
+    return; 
+  }
 
-        const payload = { name, email, id, pw, requestDate: new Date().toISOString() };
+  let fileData = null;
+  let fileName = "";
+  let fileType = "";
 
-      try {
-      await fetch("https://script.google.com/macros/s/AKfycby6u68GAqrC13Hwb_0bSyw8eolU5Cp5_V0_7XWPaH1K-PyV1t12aOHI2kP6u7oc4mTG/exec", {
-        method: "POST",
-        mode: "no-cors",
+  // 사진 파일이 첨부된 경우 Base64 인코딩 처리
+  if (fileInput && fileInput.files.length > 0) {
+    const file = fileInput.files[0];
+    fileName = file.name;
+    fileType = file.type;
+    fileData = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // 업그레이드된 Payload
+  const payload = { 
+    name, 
+    email, 
+    id, 
+    pw, 
+    fileName, 
+    fileType, 
+    fileData,
+    requestDate: new Date().toISOString() 
+  };
+
+  try {
+    alert("데이터 및 사진 업로드 중입니다. 잠시만 기다려주세요...");
+    
+    await fetch("https://script.google.com/macros/s/AKfycby6u68GAqrC13Hwb_0bSyw8eolU5Cp5_V0_7XWPaH1K-PyV1t12aOHI2kP6u7oc4mTG/exec", {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    alert(`${name}님, 제출 및 사진 업로드가 성공적으로 완료되었습니다!`);
+    hideSignup();
+  } catch(e) {
+    alert("전송에 실패했습니다. 다시 시도해 주세요.");
+  }
+}
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
